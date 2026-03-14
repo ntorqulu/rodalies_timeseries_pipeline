@@ -24,9 +24,9 @@ log = logging.getLogger(__name__)
 
 
 # ── Dedup keys: what makes a row "the same observation" ──────────────────────
-TRAIN_DEDUP     = ["train_id", "current_station_id"]
-TIMETABLE_DEDUP = ["train_id", "station_id", "planned_departure"]
-JOURNEY_DEDUP   = ["journey_id"]
+TRAIN_DEDUP = ["train_id", "line_id", "current_station_id", "next_station_id", "status", "delay_minutes", "timestamp_minute"]
+TIMETABLE_DEDUP = ["train_id", "station_id", "planned_departure", "planned_arrival"]
+JOURNEY_DEDUP = ["journey_id"]
 
 # Cache of station IDs that consistently return 500 — skip them
 _DEAD_STATIONS: set[str] = set()
@@ -86,6 +86,7 @@ def collect_trains_and_timetables(
             "current_station_id": "string", "next_station_id": "string",
             "status": "string", "delay_minutes": "int32", "timestamp": "string",
         })
+        df["timestamp_minute"] = df["timestamp"].str[:16]  # "YYYY-MM-DD HH:MM"
         store.append_dynamic("trains", df, dedup_keys=TRAIN_DEDUP)
 
     if timetable_rows:

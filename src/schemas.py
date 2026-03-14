@@ -129,7 +129,10 @@ def build_train_rows(departures_response: dict, station_id: str) -> list[dict]:
                 "train_id": str(t.get("technicalNumber", "")),
                 "line_id": t.get("line", {}).get("id", ""),
                 "current_station_id": str(station_id),
-                "next_station_id": str(t.get("nextStation", {}).get("id", "")),
+                "next_station_id": str(                          # first stop AFTER departing
+                    t.get("stations", [{}])[0].get("id", "")    # first entry in the stop list
+                    if t.get("stations") else ""
+                ),
                 "status": status,
                 "delay_minutes": delay,
                 "timestamp": ts,

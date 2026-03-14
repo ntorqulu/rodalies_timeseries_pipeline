@@ -1,5 +1,6 @@
 credentials.json
 token.json
+config/config.yaml
 data/
 .vscode/
 src/__pycache__/

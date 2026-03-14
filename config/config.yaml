@@ -1,0 +1,10 @@
+api_base: "https://serveisgrs.rodalies.gencat.cat/api"
+gdrive_folder_ids:
+  stations: "1NUOONdY9Z7pssVZPrZio_kcuJpb8a-NQ"
+  lines: "1s0uIugowoVPJp9ebXOXPzZW1utzz7ck_"
+  trains: "1oTKkcW0tCNaSsmEshdZgkOq4n3nM07RI"
+  timetables: "1J_ZPRDahiL68AkWPazAnbtqkzRmv3PX"
+  maps_stations: "1Z6PEb8fP7L5_-l0iIAWvPhRl4JTWtdSa"
+  maps_lines: "1DuxhNAadG4UholRD-oMq1RTvYRX7jRR_"
+data_dir: "data/parquet"
+log_dir: "data/logs"

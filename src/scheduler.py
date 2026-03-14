@@ -2,7 +2,7 @@
 scheduler.py — Master entry point.
 
   Static collection:  once per day at midnight (+ immediately on start)
-  Dynamic collection: every 30 seconds
+  Dynamic collection: every 60 seconds
 
 Usage:
     python scheduler.py
@@ -24,7 +24,7 @@ logging.basicConfig(
 log = logging.getLogger(__name__)
 
 
-def main(interval: int = 30) -> None:
+def main(interval: int = 60) -> None:
     store = StorageManager()
 
     # ── Static: once at startup, then daily at midnight ──────────────────────
@@ -47,6 +47,6 @@ def main(interval: int = 30) -> None:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--interval", type=int, default=30)
+    parser.add_argument("--interval", type=int, default=60)
     args = parser.parse_args()
     main(args.interval)

@@ -90,8 +90,6 @@ def build_train_rows(departures_response: dict, station_id: str) -> list[dict]:
     line_id             str
     current_station_id  str   station where this observation was recorded
     next_station_id     str
-    position_lat        float  (always None — API does not expose GPS)
-    position_lon        float
     status              str   on_time | delayed | cancelled
     delay_minutes       int
     timestamp           str   ISO datetime of this observation
@@ -116,8 +114,6 @@ def build_train_rows(departures_response: dict, station_id: str) -> list[dict]:
                 "line_id": t.get("line", {}).get("id", ""),
                 "current_station_id": str(station_id),
                 "next_station_id": str(t.get("nextStation", {}).get("id", "")),
-                "position_lat": None,  # not provided by API
-                "position_lon": None,
                 "status": status,
                 "delay_minutes": delay,
                 "timestamp": ts,

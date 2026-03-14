@@ -1,5 +1,5 @@
 """
-collect_dynamic.py — Poll live train data every 30 s and append to daily parquets.
+collect_dynamic.py — Poll live train data every 60 s and append to daily parquets.
 
 Usage:
     python collect_dynamic.py          # runs forever
@@ -159,7 +159,7 @@ def collect_journeys(
 def run_once(store: StorageManager) -> None:
     log.info("── Dynamic collection pass ──")
 
-    # Load station IDs from static cache (avoids an API call every 30 s)
+    # Load station IDs from static cache (avoids an API call every 60 s)
     stations_df = store.read_static("stations")
     if stations_df is None:
         log.warning("No static stations file found — fetching from API")
@@ -176,7 +176,7 @@ def run_once(store: StorageManager) -> None:
     log.info("── Pass complete ──")
 
 
-def run_forever(interval_seconds: int = 30) -> None:
+def run_forever(interval_seconds: int = 60) -> None:
     import schedule
     import time
 
@@ -201,8 +201,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "--interval",
         type=int,
-        default=30,
-        help="Poll interval in seconds (default: 30)",
+        default=60,
+        help="Poll interval in seconds (default: 60)",
     )
     args = parser.parse_args()
 

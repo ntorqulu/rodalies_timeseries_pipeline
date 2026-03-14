@@ -155,7 +155,8 @@ class StorageManager:
         today = datetime.now().strftime("%Y-%m-%d")
 
         def normalize_dt(series: pd.Series) -> pd.Series:
-            # Prefix bare time strings (HH:MM:SS) with today's date
+            # treat "None", "nan", "NaT" as missing
+            series = series.replace({"None": pd.NA, "nan": pd.NA, "NaT": pd.NA})
             time_only = series.str.match(r"^\d{2}:\d{2}", na=False)
             series = series.copy()
             series[time_only] = today + " " + series[time_only]

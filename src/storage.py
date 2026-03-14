@@ -98,6 +98,11 @@ class StorageManager:
             before = len(combined)
             combined = combined.drop_duplicates(subset=dedup_keys, keep="last")
             dropped = before - len(combined)
+            log.info(
+                f"[dynamic/{table}] appended {len(df)} rows | "
+                f"dropped {dropped} duplicates | "
+                f"total {len(combined)} rows"
+            )
             if dropped:
                 log.debug(
                     f"[dynamic/{table}] dropped {dropped} duplicates based on keys {dedup_keys}"
@@ -132,11 +137,13 @@ class StorageManager:
         return pd.concat(frames, ignore_index=True)
     
     def enrich_actuals(self, date: str = None) -> None:
-        trains_df = self.read_dynamic("trains", date=date)
         timetables_df = self.read_dynamic("timetables", date=date)
+        trains_df = self.read_dynamic("trains", date=date)
 
         if trains_df is None or timetables_df is None:
             return
+        
+        log.info(f"[enrich_actuals] enriching {len(timetables_df)} timetable rows")
 
         # Latest observed delay per train_id — propagate to ALL its stops
         latest_delay = (

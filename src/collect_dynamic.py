@@ -9,7 +9,6 @@ Usage:
 import argparse
 import logging
 import pandas as pd
-from itertools import permutations
 from api_client import get_timetable
 from schemas import build_train_rows, build_timetable_rows, build_journey_rows
 from storage import StorageManager

@@ -6,7 +6,7 @@ import yaml
 from src import pipeline
 
 # Load config
-config_path = Path(__file__).parent / "config/config.yaml"
+config_path = Path(__file__).parent.parent / "config/config.yaml"
 with open(config_path) as f:
     config = yaml.safe_load(f)
 

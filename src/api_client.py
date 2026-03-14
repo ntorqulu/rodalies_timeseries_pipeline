@@ -1,22 +1,67 @@
 import requests
-import logging
-import yaml
-from pathlib import Path
+from config import BASE_URL, LANG
 
-# Load config
-config_path = Path(__file__).parent.parent / "config/config.yaml"
-with open(config_path) as f:
-    config = yaml.safe_load(f)
+_session = requests.Session()
+_session.headers.update({
+    "User-Agent": "Mozilla/5.0",
+    "Accept": "application/json",
+})
 
-API_BASE = config["api_base"]
+def get_stations(limit=500, page=0):
+    url = f"{BASE_URL}/stations"
+    params = {
+        "limit": limit,
+        "page": page,
+        "lang": LANG
+    }
+    r = _session.get(url, params=params, timeout=15)
+    r.raise_for_status()
+    return r.json()
 
 
-def fetch_api(endpoint, params=None):
-    url = f"{API_BASE}/{endpoint}"
-    try:
-        response = requests.get(url, params=params)
-        response.raise_for_status()
-        return response.json()
-    except Exception as e:
-        logging.error(f"Error fetching {endpoint}: {e}")
-        return None
+def get_lines(limit=500, page=0):
+    url = f"{BASE_URL}/lines"
+    params = {
+        "type": "RODALIES",
+        "limit": limit,
+        "page": page,
+        "lang": LANG
+    }
+    r = _session.get(url, params=params, timeout=15)
+    r.raise_for_status()
+    return r.json()
+
+
+def get_timetable(origin, destination):
+    url = f"{BASE_URL}/timetables"
+    params = {
+        "originStationId": origin,
+        "destinationStationId": destination,
+        "fullResponse": "true",
+        "lang": LANG
+    }
+
+    r = _session.get(url, params=params, timeout=15)
+    r.raise_for_status()
+    return r.json()
+
+
+def get_train(train_id):
+    url = f"{BASE_URL}/trains/{train_id}"
+    r = _session.get(url, timeout=15)
+    r.raise_for_status()
+    return r.json()
+
+def get_departures(station_id, hour=None, minute=120):
+    url = f"{BASE_URL}/departures"
+    params = {
+        "stationId": station_id,
+        "minute": minute,
+        "fullResponse": "true",
+        "lang": LANG
+    }
+    if hour:
+        params["hour"] = hour
+    r = _session.get(url, params=params, timeout=15)
+    r.raise_for_status()
+    return r.json()

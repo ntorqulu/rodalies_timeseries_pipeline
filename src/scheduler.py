@@ -11,6 +11,7 @@ Usage:
 
 import argparse
 import logging
+import signal
 import time
 import schedule
 from storage import StorageManager
@@ -26,6 +27,15 @@ log = logging.getLogger(__name__)
 
 def main(interval: int = 60) -> None:
     store = StorageManager()
+    shutdown = False
+
+    def _handle_signal(sig, frame):
+        nonlocal shutdown
+        log.info("Shutdown requested — finishing current pass...")
+        shutdown = True
+
+    signal.signal(signal.SIGINT, _handle_signal)
+    signal.signal(signal.SIGTERM, _handle_signal)
 
     # ── Static: once at startup, then daily at midnight ──────────────────────
     log.info("Running initial static collection …")
@@ -40,9 +50,11 @@ def main(interval: int = 60) -> None:
 
     run_dynamic_once(store)  # immediate first dynamic pass
 
-    while True:
+    while not shutdown:
         schedule.run_pending()
         time.sleep(1)
+
+    log.info("Scheduler stopped cleanly.")
 
 
 if __name__ == "__main__":

@@ -1,5 +1,5 @@
 import requests
-from config import BASE_URL, LANG
+from config import BASE_URL, LANG, TIMEOUT
 
 _session = requests.Session()
 _session.headers.update({
@@ -14,7 +14,7 @@ def get_stations(limit=500, page=0):
         "page": page,
         "lang": LANG
     }
-    r = _session.get(url, params=params, timeout=15)
+    r = _session.get(url, params=params, timeout=TIMEOUT)
     r.raise_for_status()
     return r.json()
 
@@ -27,7 +27,7 @@ def get_lines(limit=500, page=0):
         "page": page,
         "lang": LANG
     }
-    r = _session.get(url, params=params, timeout=15)
+    r = _session.get(url, params=params, timeout=TIMEOUT)
     r.raise_for_status()
     return r.json()
 
@@ -40,15 +40,14 @@ def get_timetable(origin, destination):
         "fullResponse": "true",
         "lang": LANG
     }
-
-    r = _session.get(url, params=params, timeout=15)
+    r = _session.get(url, params=params, timeout=TIMEOUT)
     r.raise_for_status()
     return r.json()
 
 
 def get_train(train_id):
     url = f"{BASE_URL}/trains/{train_id}"
-    r = _session.get(url, timeout=15)
+    r = _session.get(url, timeout=TIMEOUT)
     r.raise_for_status()
     return r.json()
 
@@ -62,6 +61,6 @@ def get_departures(station_id, hour=None, minute=120):
     }
     if hour:
         params["hour"] = hour
-    r = _session.get(url, params=params, timeout=15)
+    r = _session.get(url, params=params, timeout=TIMEOUT)
     r.raise_for_status()
     return r.json()

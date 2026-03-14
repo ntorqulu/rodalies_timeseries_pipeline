@@ -11,6 +11,22 @@ def _now() -> str:
     """ISO datetime with space separator — consistent with API datetime format."""
     return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
+def _normalize_dt(value: str | None) -> str | None:
+    """
+    Normalize any datetime string to 'YYYY-MM-DD HH:MM:SS'.
+    Handles:
+      - None / empty          → None
+      - 'HH:MM:SS'            → prepend today's date
+      - '2026-03-14T19:26:38' → replace T with space
+      - '2026-03-14 19:26:38' → unchanged
+    """
+    if not value:
+        return None
+    value = str(value).replace("T", " ")
+    if len(value) <= 8:  # bare time like "19:26:38"
+        value = datetime.now().strftime("%Y-%m-%d") + " " + value
+    return value
+
 
 # ── Static ────────────────────────────────────────────────────────────────────
 
@@ -135,7 +151,7 @@ def build_timetable_rows(
     -------
     train_id            str
     station_id          str
-    planned_arrival     str | None   ISO datetime
+    planned_arrival     str | None
     planned_departure   str | None
     actual_arrival      str | None
     actual_departure    str | None
@@ -147,7 +163,7 @@ def build_timetable_rows(
         train_id = str(t.get("technicalNumber", ""))
 
         # The departure at the queried station is the most reliable data point
-        sched_dep = t.get("departureDateHourSelectedStation")
+        sched_dep = _normalize_dt(t.get("departureDateHourSelectedStation"))
 
         rows.append(
             {
@@ -167,9 +183,9 @@ def build_timetable_rows(
                 {
                     "train_id": train_id,
                     "station_id": str(stop.get("id", "")),
-                    "planned_arrival": stop.get("arrivalDateHour"),
-                    "planned_departure": stop.get("departureDateHour"),
-                    "actual_arrival": None,  # real-time actuals not in this endpoint
+                    "planned_arrival": _normalize_dt(stop.get("arrivalDateHour")),
+                    "planned_departure": _normalize_dt(stop.get("departureDateHour")),
+                    "actual_arrival": None,
                     "actual_departure": None,
                     "timestamp": ts,
                 }

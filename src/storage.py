@@ -98,11 +98,6 @@ class StorageManager:
             before = len(combined)
             combined = combined.drop_duplicates(subset=dedup_keys, keep="last")
             dropped = before - len(combined)
-            log.info(
-                f"[dynamic/{table}] appended {len(df)} rows | "
-                f"dropped {dropped} duplicates | "
-                f"total {len(combined)} rows"
-            )
             if dropped:
                 log.debug(
                     f"[dynamic/{table}] dropped {dropped} duplicates based on keys {dedup_keys}"
@@ -162,38 +157,40 @@ class StorageManager:
         today = datetime.now().strftime("%Y-%m-%d")
 
         def normalize_dt(series: pd.Series) -> pd.Series:
-            # treat "None", "nan", "NaT" as missing
-            series = series.replace({"None": pd.NA, "nan": pd.NA, "NaT": pd.NA})
+            # normalize all null string representations
+            series = series.replace(
+                {"None": pd.NA, "nan": pd.NA, "NaT": pd.NA, "<NA>": pd.NA, "NaN": pd.NA}
+            )
+            # replace T separator with space (API returns both formats)
+            series = series.str.replace("T", " ", regex=False)
+            # prefix bare time strings (HH:MM:SS or HH:MM) with today's date
             time_only = series.str.match(r"^\d{2}:\d{2}", na=False)
             series = series.copy()
             series[time_only] = today + " " + series[time_only]
             return pd.to_datetime(series, errors="coerce")
 
+        merged = merged.reset_index(drop=True)
+
         planned_dep = normalize_dt(merged["planned_departure"].astype(str))
         planned_arr = normalize_dt(merged["planned_arrival"].astype(str))
 
-        fmt = "%Y-%m-%d %H:%M:%S"  # single output format for all datetime columns
+        fmt = "%Y-%m-%d %H:%M:%S"
 
-        # actual = planned + delay for all trains with a known delay
-        # covers on-time (0), early (-N), and delayed (+N) in one pass
         has_delay = merged["delay_minutes"].notna()
         delay_td = pd.to_timedelta(merged.loc[has_delay, "delay_minutes"], unit="m")
 
         dep_mask = has_delay & planned_dep.notna()
         merged.loc[dep_mask, "actual_departure"] = (
-            (planned_dep[dep_mask] + delay_td[dep_mask])
-            .dt.strftime(fmt)
+            (planned_dep[dep_mask] + delay_td[dep_mask]).dt.strftime(fmt)
         )
 
         arr_mask = has_delay & planned_arr.notna()
         merged.loc[arr_mask, "actual_arrival"] = (
-            (planned_arr[arr_mask] + delay_td[arr_mask])
-            .dt.strftime(fmt)
+            (planned_arr[arr_mask] + delay_td[arr_mask]).dt.strftime(fmt)
         )
 
-        # Normalise planned columns to consistent format
-        merged["planned_departure"] = planned_dep.dt.strftime(fmt).where(planned_dep.notna())
-        merged["planned_arrival"] = planned_arr.dt.strftime(fmt).where(planned_arr.notna())
+        merged["planned_departure"] = planned_dep.dt.strftime(fmt)
+        merged["planned_arrival"] = planned_arr.dt.strftime(fmt)
 
         merged = merged.drop(columns=["delay_minutes"])
         path = self._dynamic_path("timetables", date)
@@ -205,11 +202,12 @@ class StorageManager:
     
     def enrich_positions(self, date: str = None) -> None:
         trains_df = self.read_dynamic("trains", date=date)
-        trains_df = trains_df.drop(columns=["position_lat", "position_lon"], errors="ignore")
         stations_df = self.read_static("stations")
 
         if trains_df is None or stations_df is None:
             return
+
+        trains_df = trains_df.drop(columns=["position_lat", "position_lon"], errors="ignore")
 
         coords = stations_df[["station_id", "latitude", "longitude"]]
 

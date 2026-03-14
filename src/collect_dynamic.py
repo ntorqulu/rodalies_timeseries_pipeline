@@ -110,8 +110,9 @@ def get_valid_station_pairs(store: StorageManager) -> list[tuple]:
     for line in data["included"]:
         station_ids = [s["id"] for s in line.get("stations", [])]
         for i in range(len(station_ids)):
-            for j in range(i + 1, len(station_ids)):
-                pairs.add((station_ids[i], station_ids[j]))
+            for j in range(len(station_ids)):
+                if i != j:
+                    pairs.add((station_ids[i], station_ids[j]))
     _VALID_PAIRS = list(pairs)
     return _VALID_PAIRS
 

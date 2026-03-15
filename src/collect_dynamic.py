@@ -165,6 +165,10 @@ def collect_weather(store: StorageManager) -> None:
     Fetch current weather for Barcelona from Open-Meteo (free, no API key).
     Stored once per pass — deduped by minute so no duplicates within a poll.
     """
+    from datetime import datetime
+    now = datetime.now()
+    if now.minute % 10 != 0:
+        return
     try:
         url = "https://api.open-meteo.com/v1/forecast"
         params = {
@@ -172,6 +176,7 @@ def collect_weather(store: StorageManager) -> None:
             "longitude": 2.1686,
             "current":   "temperature_2m,precipitation,windspeed_10m,weathercode,cloudcover",
             "timezone":  "Europe/Madrid",
+            "forecast_days": 1,  # minimize response size
         }
         r = requests.get(url, params=params, timeout=10)
         r.raise_for_status()
@@ -184,7 +189,7 @@ def collect_weather(store: StorageManager) -> None:
             "temperature":   w.get("temperature_2m"),
             "precipitation": w.get("precipitation"),
             "windspeed":     w.get("windspeed_10m"),
-            "weathercode":   w.get("weathercode"),
+            "weathercode":  w.get("weather_code") or w.get("weathercode"),
             "cloudcover":    w.get("cloudcover"),
         }])
         store.append_dynamic("weather", df, dedup_keys=WEATHER_DEDUP)

@@ -7,7 +7,7 @@ DRIVE_FOLDER = {
     "stations":    "1NUOONdY9Z7pssVZPrZio_kcuJpb8a-NQ",
     "lines":       "1s0uIugowoVPJp9ebXOXPzZW1utzz7ck_",
     "trains":      "1oTKkcW0tCNaSsmEshdZgkOq4n3nM07RI",
-    "timetables":  "1J_ZPRDahiL68AkWPazAnbtqkzRmv3PX",
+    "timetables":  "1J_ZPRDahiL68AkWPazAnbtqkzRmv3PXH",
     "journeys":    "14s6dncDhUzJ7pXjahfcMzduJHP_9J8nV",
     "weather":     "1UzwckGP8K4NMOP5mUnIAu05RAKq2K5Cl",
 }

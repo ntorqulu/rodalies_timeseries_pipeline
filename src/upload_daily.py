@@ -2,7 +2,7 @@ import logging
 from pathlib import Path
 from datetime import datetime, timedelta
 
-from drive_uploader import get_service, upload_file
+from driver_uploader import get_service, upload_file
 from config import DRIVE_FOLDER
 
 log = logging.getLogger(__name__)
@@ -23,20 +23,18 @@ def upload_yesterday_dynamic() -> None:
     }
 
     for table, path in dynamic_files.items():
-        if not DRIVE_FOLDER.get(table):
-            log.warning(f"No Drive folder configured for {table}, skipping upload")
+        folder_id = DRIVE_FOLDER.get(table)
+        if not folder_id:
+            log.warning(f"[drive] no folder configured for {table}, skipping")
             continue
-        upload_file(service, path, DRIVE_FOLDER[table])
-
-
-def file_exists(service, name: str, folder_id: str) -> bool:
-    query = f"name='{name}' and '{folder_id}' in parents and trashed=false"
-    results = service.files().list(q=query, fields="files(id,name)").execute()
-    return len(results.get("files", [])) > 0
+        upload_file(service, path, folder_id)
 
 
 def upload_static_once() -> None:
-    """Upload static files only if they haven't been uploaded yet."""
+    """
+    Upload static files. Since static data is refreshed daily,
+    always update (upload_file handles create-or-update).
+    """
     service = get_service()
 
     static_files = {
@@ -45,24 +43,24 @@ def upload_static_once() -> None:
     }
 
     for table, path in static_files.items():
-        folder_id = DRIVE_FOLDER[table]
-        if file_exists(service, path.name, folder_id):
-            log.info(f"{path.name} already uploaded, skipping")
+        folder_id = DRIVE_FOLDER.get(table)
+        if not folder_id:
+            log.warning(f"[drive] no folder configured for {table}, skipping")
             continue
         upload_file(service, path, folder_id)
 
 
 def upload_midnight() -> None:
-    log.info("Uploading yesterday's dynamic files …")
+    log.info("[drive] uploading yesterday's dynamic files …")
     try:
         upload_yesterday_dynamic()
     except Exception as e:
-        log.error(f"Dynamic upload failed: {e}")
+        log.error(f"[drive] dynamic upload failed: {e}")
 
-    log.info("Checking static files …")
+    log.info("[drive] uploading static files …")
     try:
         upload_static_once()
     except Exception as e:
-        log.error(f"Static upload failed: {e}")
+        log.error(f"[drive] static upload failed: {e}")
 
-    log.info("Upload complete")
+    log.info("[drive] upload complete")

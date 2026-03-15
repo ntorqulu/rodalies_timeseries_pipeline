@@ -38,17 +38,29 @@ def main(interval: int = 60) -> None:
     signal.signal(signal.SIGINT, _handle_signal)
     signal.signal(signal.SIGTERM, _handle_signal)
 
+    def run_daily_tasks() -> None:
+        """Refresh static data then upload everything — runs once at midnight."""
+        log.info("── Daily tasks ──")
+        try:
+            run_static()
+        except Exception as e:
+            log.error(f"Static collection failed: {e}")
+        try:
+            upload_midnight()
+        except Exception as e:
+            log.error(f"Midnight upload failed: {e}")
+        log.info("── Daily tasks complete ──")
+
     # ── Static: once at startup, then daily at midnight ──────────────────────
     log.info("Running initial static collection …")
     run_static()
 
-    schedule.every().day.at("00:00").do(run_static)
-    schedule.every().day.at("00:01").do(upload_midnight)  # 1 min after static refresh
+    schedule.every().day.at("00:00").do(run_daily_tasks)
 
     # ── Dynamic: every N seconds ──────────────────────────────────────────────
     schedule.every(interval).seconds.do(run_dynamic_once, store=store)
 
-    log.info(f"Scheduler running — dynamic every {interval}s, static daily at 00:00")
+    log.info(f"Scheduler running — dynamic every {interval}s, daily tasks at 00:00")
 
     run_dynamic_once(store)  # immediate first dynamic pass
 

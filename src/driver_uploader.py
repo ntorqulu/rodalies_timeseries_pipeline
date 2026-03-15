@@ -1,9 +1,8 @@
 import logging
 from pathlib import Path
-from datetime import datetime, timedelta
 
-from googleclient.discovery import build
-from googleclient.http import MediaFileUpload
+from googleapiclient.discovery import build
+from googleapiclient.http import MediaFileUpload
 from google.oauth2.credentials import Credentials
 
 SCOPES = ["https://www.googleapis.com/auth/drive.file"]
@@ -15,7 +14,6 @@ def get_service():
     return build("drive", "v3", credentials=creds)
 
 def upload_file(service, filepath: Path, folder_id: str):
-
     if not filepath.exists():
         log.warning(f"{filepath} does not exist")
         return
@@ -25,12 +23,12 @@ def upload_file(service, filepath: Path, folder_id: str):
         "parents": [folder_id],
     }
 
-    media = MediaFileUpload(filepath, resumable=True)
+    media = MediaFileUpload(str(filepath), resumable=True)
 
-    service.files().create(
+    file = service.files().create(
         body=file_metadata,
         media_body=media,
         fields="id",
     ).execute()
 
-    log.info(f"Uploaded {filepath}")
+    log.info(f"Uploaded {filepath} → id={file.get('id')}")

@@ -24,7 +24,7 @@ log = logging.getLogger(__name__)
 
 
 # ── Dedup keys: what makes a row "the same observation" ──────────────────────
-TRAIN_DEDUP = ["train_id", "line_id", "current_station_id", "next_station_id", "status", "delay_minutes", "timestamp_minute"]
+TRAIN_DEDUP = ["train_id", "line_id", "current_station_id", "next_station_id"]
 TIMETABLE_DEDUP = ["train_id", "station_id", "planned_departure", "planned_arrival"]
 JOURNEY_DEDUP = ["journey_id"]
 

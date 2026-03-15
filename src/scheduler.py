@@ -17,6 +17,7 @@ import schedule
 from storage import StorageManager
 from collect_static import run as run_static
 from collect_dynamic import run_once as run_dynamic_once
+from upload_daily import upload_midnight
 
 logging.basicConfig(
     level=logging.INFO,
@@ -42,6 +43,7 @@ def main(interval: int = 60) -> None:
     run_static()
 
     schedule.every().day.at("00:00").do(run_static)
+    schedule.every().day.at("00:01").do(upload_midnight)  # 1 min after static refresh
 
     # ── Dynamic: every N seconds ──────────────────────────────────────────────
     schedule.every(interval).seconds.do(run_dynamic_once, store=store)

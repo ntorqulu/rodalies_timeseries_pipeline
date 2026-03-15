@@ -17,13 +17,15 @@ def _normalize_dt(value: str | None) -> str | None:
     Handles:
       - None / empty          → None
       - 'HH:MM:SS'            → prepend today's date
+      - 'HH:MM'               → prepend today's date
       - '2026-03-14T19:26:38' → replace T with space
       - '2026-03-14 19:26:38' → unchanged
     """
     if not value:
         return None
     value = str(value).replace("T", " ")
-    if len(value) <= 8:  # bare time like "19:26:38"
+    # bare time: has colon, no dash, max 8 chars (HH:MM or HH:MM:SS)
+    if ":" in value and "-" not in value and len(value) <= 8:
         value = datetime.now().strftime("%Y-%m-%d") + " " + value
     return value
 
@@ -133,8 +135,10 @@ def build_train_rows(departures_response: dict, station_id: str) -> list[dict]:
                     t.get("stations", [{}])[0].get("id", "")    # first entry in the stop list
                     if t.get("stations") else ""
                 ),
+                "platform": t.get("platformSelectedStation"),
                 "status": status,
                 "delay_minutes": delay,
+                "observations": t.get("trainObservations"),
                 "timestamp": ts,
             }
         )
@@ -176,6 +180,9 @@ def build_timetable_rows(
                 "planned_departure": sched_dep,
                 "actual_arrival": None,
                 "actual_departure": None,
+                "platform": t.get("platformSelectedStation"),
+                "stop_type": None,
+                "observations": t.get("trainObservations"),
                 "timestamp": ts,
             }
         )
@@ -190,6 +197,9 @@ def build_timetable_rows(
                     "planned_departure": _normalize_dt(stop.get("departureDateHour")),
                     "actual_arrival": None,
                     "actual_departure": None,
+                    "platform": stop.get("platform"),
+                    "stop_type": stop.get("stopType"),
+                    "observations": stop.get("stationObservations"),
                     "timestamp": ts,
                 }
             )
@@ -227,7 +237,7 @@ def build_journey_rows(
     for item in items:
         first_step = item.get("steps", [{}])[0]
         train_id = str(first_step.get("train", {}).get("id", ""))
-        departure = item.get("departsAtOrigin", "")
+        departure = _normalize_dt(item.get("departsAtOrigin", ""))
 
         journey_id = f"{train_id}_{origin_id}_{destination_id}_{departure}"
 
@@ -237,8 +247,8 @@ def build_journey_rows(
                 "train_id": train_id,
                 "origin_station_id": str(origin_id),
                 "destination_station_id": str(destination_id),
-                "departure_time": departure,
-                "arrival_time": item.get("arrivesAtDestination"),
+                "departure_time": _normalize_dt(item.get("departsAtOrigin")),
+                "arrival_time":   _normalize_dt(item.get("arrivesAtDestination")),
                 "duration": item.get("duration"),
                 "accessible": bool(item.get("globalAccessibility", False)),
                 "steps": len(item.get("steps", [])),

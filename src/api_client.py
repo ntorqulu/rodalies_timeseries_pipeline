@@ -47,7 +47,11 @@ def get_timetable(origin, destination):
 
 def get_train(train_id):
     url = f"{BASE_URL}/trains/{train_id}"
-    r = _session.get(url, timeout=TIMEOUT)
+    params = {
+        "fullResponse": "true",
+        "lang": LANG,
+    }
+    r = _session.get(url, params=params, timeout=TIMEOUT)
     r.raise_for_status()
     return r.json()
 

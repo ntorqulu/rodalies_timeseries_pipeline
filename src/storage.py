@@ -41,7 +41,7 @@ class StorageManager:
         self.dynamic_dir = self.base / "dynamic"
 
         self.static_dir.mkdir(parents=True, exist_ok=True)
-        for table in ("trains", "timetables", "journeys"):
+        for table in ("trains", "timetables", "journeys", "weather"):
             (self.dynamic_dir / table).mkdir(parents=True, exist_ok=True)
 
     # HELPERS
@@ -131,6 +131,65 @@ class StorageManager:
             return pd.DataFrame()
         return pd.concat(frames, ignore_index=True)
     
+    def enrich_timetables_from_train_api(self, date: str = None) -> None:
+        """
+        Call /trains/{id} for each unique train in timetables and enrich with:
+        - stop_sequence  (position in route, 0-based)
+        - composition    (train type/cars)
+        Replaces the need for a separate train_stops table.
+        """
+        from api_client import get_train
+
+        timetables_df = self.read_dynamic("timetables", date=date)
+        trains_df = self.read_dynamic("trains", date=date)
+
+        if timetables_df is None or trains_df is None:
+            return
+
+        train_ids = trains_df["train_id"].dropna().unique().tolist()
+        enrichment_rows = []
+
+        for train_id in train_ids:
+            try:
+                data = get_train(train_id)
+                t = data.get("train", {})
+                if not t:
+                    continue
+                composition = t.get("composition")
+                for seq, stop in enumerate(t.get("stations", [])):
+                    enrichment_rows.append({
+                        "train_id":     train_id,
+                        "station_id":   str(stop.get("id", "")),
+                        "stop_sequence": seq,
+                        "composition":  composition,
+                    })
+            except Exception as e:
+                log.warning(f"[enrich_timetables] get_train failed for {train_id}: {e}")
+
+        if not enrichment_rows:
+            log.warning("[enrich_timetables] no enrichment data collected")
+            return
+
+        enrichment = pd.DataFrame(enrichment_rows).astype({
+            "train_id":   "string",
+            "station_id": "string",
+        })
+
+        # Drop stale columns to avoid _x/_y conflicts on re-runs
+        timetables_df = timetables_df.drop(
+            columns=["stop_sequence", "composition"], errors="ignore"
+        )
+        merged = timetables_df.merge(
+            enrichment, on=["train_id", "station_id"], how="left"
+        )
+
+        path = self._dynamic_path("timetables", date)
+        merged.to_parquet(path, index=False)
+        log.info(
+            f"[enrich_timetables] added stop_sequence + composition "
+            f"for {len(enrichment_rows)} stops across {len(train_ids)} trains"
+        )
+
     def enrich_actuals(self, date: str = None) -> None:
         timetables_df = self.read_dynamic("timetables", date=date)
         trains_df = self.read_dynamic("trains", date=date)

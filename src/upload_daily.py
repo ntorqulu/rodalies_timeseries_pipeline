@@ -19,9 +19,13 @@ def upload_yesterday_dynamic() -> None:
         "trains":     DATA_DIR / f"dynamic/trains/trains_{yesterday}.parquet",
         "timetables": DATA_DIR / f"dynamic/timetables/timetables_{yesterday}.parquet",
         "journeys":   DATA_DIR / f"dynamic/journeys/journeys_{yesterday}.parquet",
+        "weather":    DATA_DIR / f"dynamic/weather/weather_{yesterday}.parquet",
     }
 
     for table, path in dynamic_files.items():
+        if not DRIVE_FOLDER.get(table):
+            log.warning(f"No Drive folder configured for {table}, skipping upload")
+            continue
         upload_file(service, path, DRIVE_FOLDER[table])
 
 

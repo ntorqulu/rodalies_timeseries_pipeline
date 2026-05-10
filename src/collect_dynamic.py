@@ -10,6 +10,7 @@ import argparse
 import logging
 import pandas as pd
 import requests
+from datetime import datetime, timedelta
 from api_client import get_timetable
 from schemas import build_train_rows, build_timetable_rows, build_journey_rows
 from schemas import _now
@@ -31,16 +32,21 @@ TIMETABLE_DEDUP = ["train_id", "station_id", "planned_departure"]
 JOURNEY_DEDUP   = ["journey_id"]
 WEATHER_DEDUP   = ["timestamp_minute"]
 
-# Cache of station IDs that consistently return 500 — skip them
-_DEAD_STATIONS: set[str] = set()
+# Cache station IDs that recently returned 500. Keep them disabled only briefly.
+_DEAD_STATIONS: dict[str, datetime] = {}
+_DEAD_STATION_TTL_SECONDS = 600
 
 
 async def fetch_departures_async(
     session: aiohttp.ClientSession,
     station_id: str,
 ) -> tuple[str, dict | None]:
-    if station_id in _DEAD_STATIONS:
+    dead_until = _DEAD_STATIONS.get(station_id)
+    now = datetime.now()
+    if dead_until and dead_until > now:
         return station_id, None
+    if dead_until and dead_until <= now:
+        _DEAD_STATIONS.pop(station_id, None)
 
     url = f"{BASE_URL}/departures"
     params = {"stationId": station_id, "minute": 120, "fullResponse": "true", "lang": LANG}
@@ -48,9 +54,12 @@ async def fetch_departures_async(
     try:
         async with session.get(url, params=params, timeout=aiohttp.ClientTimeout(total=10)) as resp:
             if resp.status == 500:
-                _DEAD_STATIONS.add(station_id)
+                _DEAD_STATIONS[station_id] = datetime.now() + timedelta(
+                    seconds=_DEAD_STATION_TTL_SECONDS
+                )
                 return station_id, None
             resp.raise_for_status()
+            _DEAD_STATIONS.pop(station_id, None)
             return station_id, await resp.json()
     except Exception as e:
         log.warning(f"Departures failed for station {station_id}: {e}")
@@ -75,6 +84,18 @@ def collect_trains_and_timetables(
     station_ids: list[str],
 ) -> None:
     all_data = asyncio.run(fetch_all_departures(station_ids))
+
+    if not all_data:
+        now = datetime.now()
+        dead_count = sum(1 for until in _DEAD_STATIONS.values() if until > now)
+        if dead_count:
+            log.warning(
+                "No /departures data collected (stations temporarily disabled after HTTP 500: %s)",
+                dead_count,
+            )
+        else:
+            log.warning("No /departures data collected; skipping trains/timetables write")
+        return
 
     train_rows: list[dict] = []
     timetable_rows: list[dict] = []
@@ -163,12 +184,14 @@ def collect_journeys(
 def collect_weather(store: StorageManager) -> None:
     """
     Fetch current weather for Barcelona from Open-Meteo (free, no API key).
-    Stored once per pass — deduped by minute so no duplicates within a poll.
+    Stored once per 10-minute bucket and deduped by bucket so startup offset
+    does not cause the sample to be skipped entirely.
     """
     from datetime import datetime
+
     now = datetime.now()
-    if now.minute % 10 != 0:
-        return
+    bucket_minute = (now.minute // 10) * 10
+    bucket_ts = now.replace(minute=bucket_minute, second=0, microsecond=0)
     try:
         url = "https://api.open-meteo.com/v1/forecast"
         params = {
@@ -182,7 +205,7 @@ def collect_weather(store: StorageManager) -> None:
         r.raise_for_status()
         w = r.json().get("current", {})
 
-        ts = _now()
+        ts = bucket_ts.strftime("%Y-%m-%d %H:%M:%S")
         df = pd.DataFrame([{
             "timestamp":     ts,
             "timestamp_minute": ts[:16],

@@ -239,6 +239,9 @@ def build_journey_rows(
         train_id = str(first_step.get("train", {}).get("id", ""))
         departure = _normalize_dt(item.get("departsAtOrigin", ""))
 
+        if not departure:
+            continue  # skip — can't build a stable journey_id without departure time
+
         journey_id = f"{train_id}_{origin_id}_{destination_id}_{departure}"
 
         rows.append(

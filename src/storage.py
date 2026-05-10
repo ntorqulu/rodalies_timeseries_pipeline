@@ -184,6 +184,9 @@ class StorageManager:
         )
 
         path = self._dynamic_path("timetables", date)
+        merged = merged.drop_duplicates(
+            subset=["train_id", "station_id", "planned_departure"], keep="last"
+        )
         merged.to_parquet(path, index=False)
         log.info(
             f"[enrich_timetables] added stop_sequence + composition "
@@ -252,6 +255,9 @@ class StorageManager:
         merged["planned_arrival"] = planned_arr.dt.strftime(fmt)
 
         merged = merged.drop(columns=["delay_minutes"])
+        merged = merged.drop_duplicates(
+            subset=["train_id", "station_id", "planned_departure"], keep="last"
+        )
         path = self._dynamic_path("timetables", date)
         merged.to_parquet(path, index=False)
         log.info(
